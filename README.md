@@ -35,3 +35,7 @@ thanks:
 jcmvbkbc http://bbs.espressif.com/viewtopic.php?t=200 for get_ccount
 http://espressif.com/en/products/software/esp-mesh for tcp server example
 dxguidan, hreintke http://www.esp8266.com/viewtopic.php?f=13&t=1259 for gpio code
+
+Compability:
+Logitech K120 - works
+K260 keyboard+mouse dongle - not working(it's using 12mbps)

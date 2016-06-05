@@ -208,7 +208,72 @@ void main_int_handler()
 #define WIFI_APPASSWORD	"12345678"
 static char macaddr[6];
 
-void user_init(void)
+void wifiSetup()
+{
+	wifi_fpm_close();
+	wifi_set_opmode(SOFTAP_MODE);
+
+	if (!wifi_softap_dhcps_stop()) {
+		printf("Failed to wifi_softap_dhcps_stop()");
+	}
+
+	struct softap_config apConfig;
+	struct ip_info ipinfo;
+
+	char ssid[33];
+	char password[33];
+
+	
+	wifi_get_macaddr(SOFTAP_IF, macaddr);
+	wifi_softap_get_config(&apConfig);
+	memset(apConfig.ssid, 0, sizeof(apConfig.ssid));
+	sprintf(ssid, "%s", WIFI_APSSID);
+	apConfig.ssid_len = strlen(ssid);
+	memcpy(apConfig.ssid, ssid, apConfig.ssid_len);
+
+	memset(apConfig.password, 0, sizeof(apConfig.password));
+	sprintf(password, "%s", WIFI_APPASSWORD);
+	memcpy(apConfig.password, password, strlen(password));
+
+	apConfig.authmode = AUTH_WPA2_PSK;
+	apConfig.channel = 7;
+	apConfig.max_connection = 255;
+	apConfig.ssid_hidden = 0;
+	apConfig.beacon_interval = 100;
+	if (!wifi_softap_set_config(&apConfig)) {
+		printf("Failed to wifi_softap_set_config()");
+	}
+
+	IP4_ADDR(&ipinfo.ip, 10, 10, 10, 1);
+	IP4_ADDR(&ipinfo.gw, 10, 10, 10, 1);
+	IP4_ADDR(&ipinfo.netmask, 255, 255, 255, 0);
+	espconn_dns_setserver(0, &ipinfo.ip);
+	if (!wifi_set_ip_info(SOFTAP_IF, &ipinfo)) {
+		printf("Failed to wifi_set_ip_info()");
+	}
+
+	if (!wifi_set_phy_mode(PHY_MODE_11G))
+	{
+		printf("Failed to wifi_set_phy_mode()");
+	}
+
+	if (!wifi_softap_dhcps_start())
+	{
+		printf("Failed to wifi_softap_dhcps_start()");
+	}
+
+	printf("SDK version:%s\n", system_get_sdk_version());
+	printf("Time: %d\n", system_get_time());
+	printf("Chip id = 0x%x\n", system_get_chip_id());
+	printf("CPU freq = %d MHz\n", system_get_cpu_freq());
+	printf("Free heap size = %d\n", system_get_free_heap_size());
+	printf("Wifi mode: %d\n", wifi_get_opmode());
+
+
+	user_tcpserver_init(1080);
+}
+
+void gpioSetup()
 {
 	system_update_cpu_freq(80);
 
@@ -218,9 +283,6 @@ void user_init(void)
 	////gpio_intr_handler_register(main_int_callback);
 	//registerInterrupt(12, GPIO_PIN_INTR_ANYEDGE);
 	//registerInterrupt(2, GPIO_PIN_INTR_ANYEDGE);
-
-	//read_input();
-	//xTaskCreate(readInput, "read_input", 256, NULL, 2, NULL);
 
 	GPIO_ConfigTypeDef gpio_in_cfg;                                    //Define GPIO Init Structure
 	gpio_in_cfg.GPIO_IntrType = GPIO_PIN_INTR_ANYEDGE;                 //Falling edge trigger
@@ -240,78 +302,19 @@ void user_init(void)
 
 	GPIO_REG_WRITE(GPIO_STATUS_W1TC_ADDRESS, GPIO_Pin_12);
 	GPIO_REG_WRITE(GPIO_STATUS_W1TC_ADDRESS, GPIO_Pin_13);
-	//GPIO_REG_WRITE(GPIO_STATUS_W1TC_ADDRESS, GPIO_Pin_14);
+	GPIO_REG_WRITE(GPIO_STATUS_W1TC_ADDRESS, GPIO_Pin_14);
 	gpio_intr_handler_register(main_int_handler, NULL);                   // Register the interrupt function
 	_xt_isr_unmask(1 << ETS_GPIO_INUM);                                //Enable the GPIO interrupt
 
 	//GPIO_OUTPUT_SET(12, 0);
 	//GPIO_OUTPUT_SET(13, 0);
-	//GPIO_OUTPUT_SET(14, 0);
-
-	if (wifi_get_opmode() != SOFTAP_MODE)
-	{
-		wifi_set_opmode(SOFTAP_MODE);
-	}
-
-	if(!wifi_softap_dhcps_stop()) {
-		printf("Failed to wifi_softap_dhcps_stop()");
-	}
-
-	struct softap_config apConfig;
-	struct ip_info ipinfo;
-
-	char ssid[33];
-	char password[33];
-
-	wifi_get_macaddr(SOFTAP_IF, macaddr);
-	wifi_softap_get_config(&apConfig);
-	memset(apConfig.ssid, 0, sizeof(apConfig.ssid));
-	sprintf(ssid, "%s", WIFI_APSSID);
-	memcpy(apConfig.ssid, ssid, strlen(ssid));
-
-	memset(apConfig.password, 0, sizeof(apConfig.password));
-		sprintf(password, "%s", WIFI_APPASSWORD);
-		memcpy(apConfig.password, password, strlen(password));
-		apConfig.authmode = AUTH_WPA2_PSK;
-		apConfig.channel = 7;
-		apConfig.max_connection = 255;
-		apConfig.ssid_hidden = 0;
-		apConfig.beacon_interval = 100;
-		if (!wifi_softap_set_config(&apConfig)) {
-			printf("Failed to wifi_softap_set_config()");
-		}
-	
-	IP4_ADDR(&ipinfo.ip, 10, 10, 10, 1);
-	IP4_ADDR(&ipinfo.gw, 10, 10, 10, 1);
-	IP4_ADDR(&ipinfo.netmask, 255, 255, 255, 0);
-	espconn_dns_setserver(0, &ipinfo.ip);
-	if (!wifi_set_ip_info(SOFTAP_IF, &ipinfo)) {
-		printf("Failed to wifi_set_ip_info()");
-	}
-
-	if (!wifi_set_phy_mode(PHY_MODE_11G))
-	{
-		printf("Failed to wifi_set_phy_mode()");
-	}
-	
-	if (!wifi_softap_dhcps_start())
-	{
-		printf("Failed to wifi_softap_dhcps_start()");
-	}
-		
+	//GPIO_OUTPUT_SET(14, 0);	
+}
 
 
-
-	printf("SDK version:%s\n", system_get_sdk_version());
-	printf("Time:%ld\n", system_get_time());
-	printf("Chip id = 0x%x\n", system_get_chip_id());
-	printf("CPU freq = %d MHz\n", system_get_cpu_freq());
-	printf("Free heap size = %d\n", system_get_free_heap_size());
-	printf("mode: %d\n", wifi_get_opmode());
-
-
-	user_tcpserver_init(1080);
-
-	//GPIO_OUTPUT_SET(14, 0);
+void user_init(void)
+{
+	wifiSetup();
+	gpioSetup();
 }
 
